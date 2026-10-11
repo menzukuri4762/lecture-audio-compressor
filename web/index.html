@@ -697,31 +697,83 @@
           }
         }, 120);
 
+        const targetSampleRate = 16000;
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        const tempAudioCtx = new AudioContextClass();
-        const decodedAudio = await tempAudioCtx.decodeAudioData(fileBuffer);
+        let tempAudioCtx = null;
+        try {
+          // Request 16kHz context directly to reduce decode memory consumption by ~65%
+          tempAudioCtx = new AudioContextClass({ sampleRate: targetSampleRate });
+        } catch (e) {
+          tempAudioCtx = new AudioContextClass();
+        }
+
+        // Safe decodeAudioData compatible with Safari, Chrome, and detached buffers
+        const decodedAudio = await new Promise((resolve, reject) => {
+          const buf = fileBuffer.slice(0);
+          let resolved = false;
+
+          const onSuccess = (result) => {
+            if (!resolved) {
+              resolved = true;
+              resolve(result);
+            }
+          };
+
+          const onError = (err) => {
+            if (!resolved) {
+              resolved = true;
+              reject(err || new Error('音声データの展開に失敗しました。ファイル形式またはメモリ不足の可能性があります。'));
+            }
+          };
+
+          try {
+            const promise = tempAudioCtx.decodeAudioData(buf, onSuccess, onError);
+            if (promise && typeof promise.then === 'function') {
+              promise.then(onSuccess).catch(onError);
+            }
+          } catch (syncErr) {
+            onError(syncErr);
+          }
+        });
+
         clearInterval(decodeInterval);
         tempAudioCtx.close();
 
-        // 3. Native C++ Resampling & Mono Downmixing via OfflineAudioContext (15% -> 20%)
-        // Eliminates 63% of audio samples instantly, speeding up MP3 encoding by ~3x!
+        // 3. Optimize to 16kHz Mono (15% -> 20%)
         statusLabel.textContent = 'AI音声(16kHzモノラル)に高速最適化中...';
         progressBar.style.width = '16%';
         percentLabel.textContent = '16%';
 
         audioDuration = decodedAudio.duration;
-        const targetSampleRate = 16000;
-        const targetLength = Math.ceil(audioDuration * targetSampleRate);
+        let monoData = null;
 
-        const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-        const offlineCtx = new OfflineContextClass(1, targetLength, targetSampleRate);
-        const source = offlineCtx.createBufferSource();
-        source.buffer = decodedAudio;
-        source.connect(offlineCtx.destination);
-        source.start(0);
+        if (decodedAudio.sampleRate === targetSampleRate && decodedAudio.numberOfChannels === 1) {
+          // Already 16kHz mono! Zero resampling overhead
+          monoData = decodedAudio.getChannelData(0);
+        } else if (decodedAudio.sampleRate === targetSampleRate) {
+          // Already 16kHz, mix multi-channel down to mono directly
+          const len = decodedAudio.length;
+          monoData = new Float32Array(len);
+          const numCh = decodedAudio.numberOfChannels;
+          for (let ch = 0; ch < numCh; ch++) {
+            const chData = decodedAudio.getChannelData(ch);
+            for (let i = 0; i < len; i++) {
+              monoData[i] += chData[i] / numCh;
+            }
+          }
+        } else {
+          // Native C++ Resampling via OfflineAudioContext
+          const targetLength = Math.ceil(audioDuration * targetSampleRate);
+          const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+          const offlineCtx = new OfflineContextClass(1, targetLength, targetSampleRate);
+          const source = offlineCtx.createBufferSource();
+          source.buffer = decodedAudio;
+          source.connect(offlineCtx.destination);
+          source.start(0);
 
-        const resampledAudio = await offlineCtx.startRendering();
-        const monoData = resampledAudio.getChannelData(0);
+          const resampledAudio = await offlineCtx.startRendering();
+          monoData = resampledAudio.getChannelData(0);
+        }
 
         // 4. Parallel Multi-Core MP3 Encoding via Web Workers (20% -> 100%)
         const kbps = calculateBitrate(audioDuration, selectedMode);
