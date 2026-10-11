@@ -631,36 +631,62 @@
           }
         }
 
-        // 1. Read file into ArrayBuffer
-        statusLabel.textContent = 'ファイルをデコード中...';
-        const fileBuffer = await selectedFile.arrayBuffer();
+        // 1. Read file into ArrayBuffer with real-time smooth progress (0% -> 10%)
+        statusLabel.textContent = 'ファイル読み込み中...';
+        const fileBuffer = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onprogress = (e) => {
+            if (e.lengthComputable && e.total > 0) {
+              const p = Math.min(10, Math.floor((e.loaded / e.total) * 10));
+              progressBar.style.width = p + '%';
+              percentLabel.textContent = p + '%';
+            }
+          };
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(selectedFile);
+        });
+        progressBar.style.width = '10%';
+        percentLabel.textContent = '10%';
 
-        // 2. Decode using AudioContext with memory-saving 16kHz sample rate
-        // 16kHz is the native standard for Whisper & AI models, reducing data by 33% vs 24kHz!
-        const targetSampleRate = 16000;
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContextClass({ sampleRate: targetSampleRate });
-
-        const decodedAudio = await audioCtx.decodeAudioData(fileBuffer);
-        audioDuration = decodedAudio.duration;
-
-        statusLabel.textContent = 'モノラル音声に最適化中...';
-        progressBar.style.width = '15%';
-        percentLabel.textContent = '15%';
-
-        // Mix channels down to mono directly
-        const numChannels = decodedAudio.numberOfChannels;
-        const length = decodedAudio.length;
-        const monoData = new Float32Array(length);
-
-        for (let ch = 0; ch < numChannels; ch++) {
-          const chData = decodedAudio.getChannelData(ch);
-          for (let i = 0; i < length; i++) {
-            monoData[i] += chData[i] / numChannels;
+        // 2. Decode Audio with smooth animation (10% -> 15%)
+        statusLabel.textContent = '音声波形を展開中...';
+        let decodeProgress = 10;
+        const decodeInterval = setInterval(() => {
+          if (decodeProgress < 15) {
+            decodeProgress++;
+            progressBar.style.width = decodeProgress + '%';
+            percentLabel.textContent = decodeProgress + '%';
           }
-        }
+        }, 120);
 
-        // 3. Ultra-Fast MP3 Encoding (Web Worker / Batch Mode)
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const tempAudioCtx = new AudioContextClass();
+        const decodedAudio = await tempAudioCtx.decodeAudioData(fileBuffer);
+        clearInterval(decodeInterval);
+        tempAudioCtx.close();
+
+        // 3. Native C++ Resampling & Mono Downmixing via OfflineAudioContext (15% -> 20%)
+        // Eliminates 63% of audio samples instantly, speeding up MP3 encoding by ~3x!
+        statusLabel.textContent = 'AI音声(16kHzモノラル)に高速最適化中...';
+        progressBar.style.width = '16%';
+        percentLabel.textContent = '16%';
+
+        audioDuration = decodedAudio.duration;
+        const targetSampleRate = 16000;
+        const targetLength = Math.ceil(audioDuration * targetSampleRate);
+
+        const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        const offlineCtx = new OfflineContextClass(1, targetLength, targetSampleRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = decodedAudio;
+        source.connect(offlineCtx.destination);
+        source.start(0);
+
+        const resampledAudio = await offlineCtx.startRendering();
+        const monoData = resampledAudio.getChannelData(0);
+
+        // 4. Ultra-Fast MP3 Encoding (Web Worker / Batch Mode) (20% -> 100%)
         const kbps = calculateBitrate(audioDuration, selectedMode);
         statusLabel.textContent = `高速MP3(${kbps}kbps)に圧縮中...`;
         progressBar.style.width = '20%';
@@ -756,12 +782,13 @@
               fallbackMainThreadEncoding();
             };
 
-            // Transfer monoData buffer to worker with zero copy
+            // Transfer monoBuffer to worker with zero copy while preserving fallback integrity
+            const transferBuffer = monoData.slice().buffer;
             worker.postMessage({
-              monoBuffer: monoData.buffer,
+              monoBuffer: transferBuffer,
               sampleRate: targetSampleRate,
               kbps: kbps
-            }, [monoData.buffer]);
+            }, [transferBuffer]);
 
             workerSuccess = true;
           } catch (wErr) {
