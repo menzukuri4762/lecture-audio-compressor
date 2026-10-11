@@ -686,9 +686,11 @@
         const resampledAudio = await offlineCtx.startRendering();
         const monoData = resampledAudio.getChannelData(0);
 
-        // 4. Ultra-Fast MP3 Encoding (Web Worker / Batch Mode) (20% -> 100%)
+        // 4. Parallel Multi-Core MP3 Encoding via Web Workers (20% -> 100%)
         const kbps = calculateBitrate(audioDuration, selectedMode);
-        statusLabel.textContent = `高速MP3(${kbps}kbps)に圧縮中...`;
+        const cores = navigator.hardwareConcurrency || 4;
+        const numWorkers = Math.max(1, Math.min(cores, 6));
+        statusLabel.textContent = `マルチコア高速MP3(${kbps}kbps, ${numWorkers}並列)に圧縮中...`;
         progressBar.style.width = '20%';
         percentLabel.textContent = '20%';
 
@@ -712,14 +714,19 @@
           if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         };
 
-        // Try Web Worker for true multi-threaded max-speed execution
+        // Multi-Worker Parallel Encoding
         let workerSuccess = false;
         if (window.Worker && lameJsSource) {
           try {
+            const frameSize = 1152;
+            const totalSamples = monoData.length;
+            const totalFrames = Math.ceil(totalSamples / frameSize);
+            const framesPerWorker = Math.ceil(totalFrames / numWorkers);
+
             const workerScript = `
               ${lameJsSource}
               self.onmessage = function(e) {
-                const { monoBuffer, sampleRate, kbps } = e.data;
+                const { workerIndex, monoBuffer, sampleRate, kbps } = e.data;
                 const monoData = new Float32Array(monoBuffer);
                 const totalSamples = monoData.length;
                 const mp3Encoder = new lamejs.Mp3Encoder(1, sampleRate, kbps);
@@ -727,7 +734,6 @@
 
                 const chunkSize = 1152 * 32;
                 const int16Chunk = new Int16Array(chunkSize);
-
                 let offset = 0;
                 let lastReportTime = Date.now();
 
@@ -745,50 +751,81 @@
                   const chunkToEncode = (count === chunkSize) ? int16Chunk : int16Chunk.subarray(0, count);
                   const mp3buf = mp3Encoder.encodeBuffer(chunkToEncode);
                   if (mp3buf.length > 0) mp3Data.push(mp3buf);
-
                   offset = end;
+
                   const now = Date.now();
                   if (now - lastReportTime > 120 || offset === totalSamples) {
-                    const pct = Math.floor(20 + (offset / totalSamples) * 78);
-                    self.postMessage({ type: 'progress', pct: pct });
+                    self.postMessage({ type: 'progress', workerIndex: workerIndex, processed: offset });
                     lastReportTime = now;
                   }
                 }
 
                 const finalBuf = mp3Encoder.flush();
                 if (finalBuf.length > 0) mp3Data.push(finalBuf);
-                self.postMessage({ type: 'complete', mp3Data: mp3Data });
+                self.postMessage({ type: 'complete', workerIndex: workerIndex, mp3Data: mp3Data });
               };
             `;
 
             const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
             const workerUrl = URL.createObjectURL(workerBlob);
-            const worker = new Worker(workerUrl);
 
-            worker.onmessage = function(ev) {
-              if (ev.data.type === 'progress') {
-                progressBar.style.width = ev.data.pct + '%';
-                percentLabel.textContent = ev.data.pct + '%';
-              } else if (ev.data.type === 'complete') {
-                worker.terminate();
+            const workerResults = new Array(numWorkers);
+            let completedWorkers = 0;
+            const processedPerWorker = new Array(numWorkers).fill(0);
+            const workers = [];
+
+            for (let w = 0; w < numWorkers; w++) {
+              const startSample = w * framesPerWorker * frameSize;
+              const endSample = Math.min((w + 1) * framesPerWorker * frameSize, totalSamples);
+              const chunkData = monoData.subarray(startSample, endSample);
+
+              const worker = new Worker(workerUrl);
+              workers.push(worker);
+              const transferBuffer = chunkData.slice().buffer;
+
+              worker.onmessage = function(ev) {
+                if (ev.data.type === 'progress') {
+                  processedPerWorker[ev.data.workerIndex] = ev.data.processed;
+                  const totalDone = processedPerWorker.reduce((a, b) => a + b, 0);
+                  const pct = Math.floor(20 + (totalDone / totalSamples) * 78);
+                  progressBar.style.width = pct + '%';
+                  percentLabel.textContent = pct + '%';
+                } else if (ev.data.type === 'complete') {
+                  workerResults[ev.data.workerIndex] = ev.data.mp3Data;
+                  completedWorkers++;
+
+                  if (completedWorkers === numWorkers) {
+                    workers.forEach(wk => wk.terminate());
+                    URL.revokeObjectURL(workerUrl);
+
+                    // Merge all chunks sequentially
+                    const mergedMp3 = [];
+                    for (let i = 0; i < numWorkers; i++) {
+                      if (workerResults[i]) {
+                        for (const buf of workerResults[i]) {
+                          mergedMp3.push(buf);
+                        }
+                      }
+                    }
+                    onFinished(mergedMp3);
+                  }
+                }
+              };
+
+              worker.onerror = function(err) {
+                console.warn('Worker error, fallback to main thread:', err);
+                workers.forEach(wk => wk.terminate());
                 URL.revokeObjectURL(workerUrl);
-                onFinished(ev.data.mp3Data);
-              }
-            };
+                fallbackMainThreadEncoding();
+              };
 
-            worker.onerror = function() {
-              worker.terminate();
-              URL.revokeObjectURL(workerUrl);
-              fallbackMainThreadEncoding();
-            };
-
-            // Transfer monoBuffer to worker with zero copy while preserving fallback integrity
-            const transferBuffer = monoData.slice().buffer;
-            worker.postMessage({
-              monoBuffer: transferBuffer,
-              sampleRate: targetSampleRate,
-              kbps: kbps
-            }, [transferBuffer]);
+              worker.postMessage({
+                workerIndex: w,
+                monoBuffer: transferBuffer,
+                sampleRate: targetSampleRate,
+                kbps: kbps
+              }, [transferBuffer]);
+            }
 
             workerSuccess = true;
           } catch (wErr) {
