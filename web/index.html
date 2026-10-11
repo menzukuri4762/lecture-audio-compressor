@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>講義音声 AI最適化コンプレッサー (スマホ版)</title>
+  <meta name="description" content="大学の講義録音をスマホ単体で100MB未満のAI向け高音質MP3に圧縮する完全クライアントサイドWebツール">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <meta name="theme-color" content="#0b0f19">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 29, 47, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      --success: #10b981;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.08) 0px, transparent 50%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      line-height: 1.5;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 8px;
+      margin-bottom: 32px;
+    }
+
+    header {
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Drop / File Selector Zone */
+    .drop-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(15, 23, 42, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .drop-zone:hover, .drop-zone:active {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .drop-icon {
+      font-size: 36px;
+    }
+
+    .drop-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .drop-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Selected File Info Card */
+    .file-card {
+      display: none;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-top: 12px;
+    }
+
+    .file-name {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
+      color: #bfdbfe;
+    }
+
+    .file-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .meta-val {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Settings */
+    .settings-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .pill-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .pill-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: var(--text-sub);
+      padding: 10px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .pill-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--primary);
+      color: #93c5fd;
+    }
+
+    .pill-sub {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .pill-btn.active .pill-sub {
+      color: #bfdbfe;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      transition: .3s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Action Button */
+    .btn-main {
+      width: 100%;
+      background: var(--primary-gradient);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-main:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-main:active:not(:disabled) {
+      transform: scale(0.98);
+      filter: brightness(0.95);
+    }
+
+    /* Progress & Status */
+    .progress-container {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent-gradient);
+      border-radius: 999px;
+      transition: width 0.15s ease;
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Result Actions */
+    .result-container {
+      display: none;
+      margin-top: 14px;
+      gap: 10px;
+      flex-direction: column;
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 14px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-share {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .privacy-notice {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      padding: 0 8px;
+    }
+  </style>
+  <script src="lame.min.js"></script>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge">スマホ単体完結 / サーバー送信なし</div>
+      <h1>講義音声 100MB圧縮</h1>
+      <p class="subtitle">90分の講義をスマホ内で約40MBのAI向け高音質MP3に圧縮</p>
+    </header>
+
+    <!-- PWA Install Banner -->
+    <div id="installBanner" style="display:none; background: linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(37,99,235,0.3) 100%); border: 1px solid rgba(59,130,246,0.4); border-radius: 14px; padding: 12px 14px; align-items: center; justify-content: space-between; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">📲</span>
+        <div style="font-size: 13px; font-weight: 600; color: #93c5fd;">ホーム画面にインストール</div>
+      </div>
+      <button onclick="promptInstallApp()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">インストール</button>
+    </div>
+
+    <div class="card">
+      <!-- File Selector -->
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="drop-icon">🎙️</div>
+        <div class="drop-title">録音ファイルを選択</div>
+        <div class="drop-desc">ボイスメモ / m4a / mp3 / wav / mp4動画</div>
+      </div>
+      <input type="file" id="fileInput" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.mp4,.mov">
+
+      <!-- Selected File Info -->
+      <div class="file-card" id="fileCard">
+        <div class="file-name" id="fileName">lecture.m4a</div>
+        <div class="file-meta">
+          <div class="meta-item">再生時間: <span class="meta-val" id="fileDuration">--:--</span></div>
+          <div class="meta-item">元サイズ: <span class="meta-val" id="fileSize">-- MB</span></div>
+          <div class="meta-item">変換後予想: <span class="meta-val" id="fileEst" style="color:#60a5fa;">約 -- MB</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Card -->
+    <div class="card">
+      <div class="settings-title">圧縮設定</div>
+      <div class="pill-group">
+        <div class="pill-btn active" data-mode="ai_voice" onclick="selectMode('ai_voice')">
+          AI最適化
+          <span class="pill-sub">64k / 約42MB</span>
+        </div>
+        <div class="pill-btn" data-mode="fit_target" onclick="selectMode('fit_target')">
+          100MB上限
+          <span class="pill-sub">最高音質フィット</span>
+        </div>
+        <div class="pill-btn" data-mode="compact" onclick="selectMode('compact')">
+          超軽量
+          <span class="pill-sub">32k / 約21MB</span>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <span>モノラル化 (ファイル半減・声の明瞭度UP)</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="monoToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Execution Card -->
+    <div class="card">
+      <button class="btn-main" id="btnConvert" disabled onclick="startConversion()">
+        ⚡ 100MB以下に変換開始
+      </button>
+
+      <!-- Progress -->
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+        <div class="status-text">
+          <span id="statusLabel">処理中...</span>
+          <span id="percentLabel">0%</span>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-container" id="resultContainer">
+        <a class="btn-download" id="downloadBtn" download="lecture_compressed.mp3">
+          📥 変換済みMP3を保存 (<span id="outSizeLabel">0 MB</span>)
+        </a>
+        <button class="btn-share" id="shareBtn" onclick="shareAudio()">
+          📤 AIアプリ / ファイルに直接共有
+        </button>
+      </div>
+    </div>
+
+    <div class="privacy-notice">
+      🔒 完全端末内処理: 音声データは外部サーバーに一切送信されません。<br>通信量を消費せず、オフライン環境でも高速に動作します。
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let audioDuration = 0;
+    let selectedMode = 'ai_voice';
+    let convertedBlob = null;
+    let convertedFileName = '';
+
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const fileCard = document.getElementById('fileCard');
+    const fileName = document.getElementById('fileName');
+    const fileDuration = document.getElementById('fileDuration');
+    const fileSize = document.getElementById('fileSize');
+    const fileEst = document.getElementById('fileEst');
+    const btnConvert = document.getElementById('btnConvert');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const statusLabel = document.getElementById('statusLabel');
+    const percentLabel = document.getElementById('percentLabel');
+    const resultContainer = document.getElementById('resultContainer');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const outSizeLabel = document.getElementById('outSizeLabel');
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    // Drag & drop support
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#3b82f6'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(255, 255, 255, 0.18)'; });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+      if (e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds)) return "00:00";
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      const h = Math.floor(m / 60);
+      if (h > 0) {
+        return `${h}:${String(m % 60).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 ** 3)).toFixed(1) + " GB";
+      if (bytes >= 1024 * 1024) return (bytes / (1024 ** 2)).toFixed(1) + " MB";
+      return (bytes / 1024).toFixed(0) + " KB";
+    }
+
+    function calculateBitrate(dur, mode) {
+      if (!dur || dur <= 0) return 64;
+      // Target max bytes = 95MB to strictly guarantee < 100MB
+      const maxSafeBytes = 95 * 1024 * 1024 * 0.94;
+      const maxAllowedKbps = Math.floor((maxSafeBytes * 8) / (dur * 1000));
+
+      if (mode === 'ai_voice') {
+        return maxAllowedKbps < 64 ? Math.max(24, maxAllowedKbps) : 64;
+      } else if (mode === 'fit_target') {
+        return Math.min(192, Math.max(32, maxAllowedKbps));
+      } else if (mode === 'compact') {
+        return Math.min(32, Math.max(24, maxAllowedKbps));
+      }
+      return 64;
+    }
+
+    function updateEstimate() {
+      if (!selectedFile) return;
+      const kbps = calculateBitrate(audioDuration, selectedMode);
+      const estBytes = (kbps * 1000 / 8) * (audioDuration || 5400);
+      fileEst.textContent = `約 ${(estBytes / (1024 * 1024)).toFixed(1)} MB (${kbps}kbps)`;
+    }
+
+    function selectMode(mode) {
+      selectedMode = mode;
+      document.querySelectorAll('.pill-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+      updateEstimate();
+    }
+
+    async function handleFileSelect(file) {
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileSize.textContent = formatBytes(file.size);
+      fileCard.style.display = 'block';
+      resultContainer.style.display = 'none';
+      btnConvert.disabled = false;
+
+      // Probe duration using audio element
+      audioDuration = 0;
+      fileDuration.textContent = "解析中...";
+      
+      const audioUrl = URL.createObjectURL(file);
+      const tempAudio = new Audio();
+      tempAudio.src = audioUrl;
+
+      tempAudio.addEventListener('loadedmetadata', () => {
+        audioDuration = tempAudio.duration;
+        fileDuration.textContent = formatTime(audioDuration);
+        URL.revokeObjectURL(audioUrl);
+        updateEstimate();
+      });
+
+      tempAudio.addEventListener('error', () => {
+        // Fallback estimate assuming 90 minutes if metadata fails on some mobile codecs
+        audioDuration = 90 * 60;
+        fileDuration.textContent = "約90分(推定)";
+        URL.revokeObjectURL(audioUrl);
+        updateEstimate();
+      });
+    }
+
+    async function startConversion() {
+      if (!selectedFile) return;
+
+      btnConvert.disabled = true;
+      progressContainer.style.display = 'block';
+      resultContainer.style.display = 'none';
+      progressBar.style.width = '0%';
+      statusLabel.textContent = '音声データを読み込み中...';
+      percentLabel.textContent = '0%';
+
+      try {
+        // 1. Read file into ArrayBuffer
+        statusLabel.textContent = 'ファイルをデコード中...';
+        const fileBuffer = await selectedFile.arrayBuffer();
+
+        // 2. Decode using AudioContext with memory-saving 24kHz sample rate
+        // 24kHz downsampling prevents iOS Safari WebProcess from running out of memory!
+        const targetSampleRate = 24000;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContextClass({ sampleRate: targetSampleRate });
+
+        const decodedAudio = await audioCtx.decodeAudioData(fileBuffer);
+        audioDuration = decodedAudio.duration;
+
+        statusLabel.textContent = 'モノラル音声に最適化中...';
+        progressBar.style.width = '20%';
+        percentLabel.textContent = '20%';
+
+        // Mix channels down to mono
+        const numChannels = decodedAudio.numberOfChannels;
+        const length = decodedAudio.length;
+        const monoData = new Float32Array(length);
+
+        for (let ch = 0; ch < numChannels; ch++) {
+          const chData = decodedAudio.getChannelData(ch);
+          for (let i = 0; i < length; i++) {
+            monoData[i] += chData[i] / numChannels;
+          }
+        }
+
+        // Convert Float32 (-1.0 to 1.0) to Int16 PCM (-32768 to 32767)
+        const sampleCount = monoData.length;
+        const int16Samples = new Int16Array(sampleCount);
+        for (let i = 0; i < sampleCount; i++) {
+          let s = Math.max(-1, Math.min(1, monoData[i]));
+          int16Samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        // 3. MP3 Encoding using lamejs
+        const kbps = calculateBitrate(audioDuration, selectedMode);
+        statusLabel.textContent = `MP3(${kbps}kbps)に圧縮中...`;
+
+        const mp3Encoder = new lamejs.Mp3Encoder(1, targetSampleRate, kbps);
+        const mp3Data = [];
+        const chunkSize = 1152 * 8; // Process in blocks to allow progress updates
+
+        let offset = 0;
+        const totalSamples = int16Samples.length;
+
+        function encodeChunk() {
+          const end = Math.min(offset + chunkSize, totalSamples);
+          const chunk = int16Samples.subarray(offset, end);
+          const mp3buf = mp3Encoder.encodeBuffer(chunk);
+
+          if (mp3buf.length > 0) {
+            mp3Data.push(mp3buf);
+          }
+
+          offset = end;
+          const pct = Math.floor(20 + (offset / totalSamples) * 75);
+          progressBar.style.width = pct + '%';
+          percentLabel.textContent = pct + '%';
+
+          if (offset < totalSamples) {
+            // Schedule next chunk to keep UI responsive
+            setTimeout(encodeChunk, 0);
+          } else {
+            // Finalize MP3
+            const finalBuf = mp3Encoder.flush();
+            if (finalBuf.length > 0) {
+              mp3Data.push(finalBuf);
+            }
+
+            progressBar.style.width = '100%';
+            percentLabel.textContent = '100%';
+            statusLabel.textContent = '変換完了！';
+
+            convertedBlob = new Blob(mp3Data, { type: 'audio/mp3' });
+            const origBase = selectedFile.name.replace(/\.[^/.]+$/, "");
+            convertedFileName = `${origBase}_compressed.mp3`;
+
+            // Setup download
+            const blobUrl = URL.createObjectURL(convertedBlob);
+            downloadBtn.href = blobUrl;
+            downloadBtn.download = convertedFileName;
+            outSizeLabel.textContent = formatBytes(convertedBlob.size);
+
+            resultContainer.style.display = 'flex';
+            btnConvert.disabled = false;
+
+            // Trigger vibration feedback on mobile if supported
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+          }
+        }
+
+        encodeChunk();
+
+      } catch (err) {
+        console.error(err);
+        statusLabel.textContent = 'エラーが発生しました: ' + err.message;
+        progressBar.style.backgroundColor = '#ef4444';
+        btnConvert.disabled = false;
+        alert('変換中にエラーが発生しました: ' + err.message);
+      }
+    }
+
+    async function shareAudio() {
+      if (!convertedBlob) return;
+      if (navigator.canShare && navigator.canShare({ files: [new File([convertedBlob], convertedFileName, { type: 'audio/mp3' })] })) {
+        try {
+          const fileToShare = new File([convertedBlob], convertedFileName, { type: 'audio/mp3' });
+          await navigator.share({
+            title: convertedFileName,
+            text: 'AI向けに100MB未満に圧縮した講義音声',
+            files: [fileToShare]
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            alert('共有できませんでした。ダウンロードボタンをご利用ください。');
+          }
+        }
+      } else {
+        alert('お使いのブラウザは直接共有に対応していません。上の「MP3を保存」ボタンからダウンロードしてください。');
+      }
+    }
+
+    // Register Service Worker for PWA installation
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(console.error);
+      });
+    }
+
+    // PWA Install prompt handling
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const banner = document.getElementById('installBanner');
+      if (banner) banner.style.display = 'flex';
+    });
+
+    async function promptInstallApp() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          const banner = document.getElementById('installBanner');
+          if (banner) banner.style.display = 'none';
+        }
+        deferredPrompt = null;
+      }
+    }
+  </script>
+</body>
+</html>
