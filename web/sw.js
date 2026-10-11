@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lecture-audio-compressor-v1';
+const CACHE_NAME = 'lecture-audio-compressor-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -9,9 +9,6 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
   self.skipWaiting();
 });
 
@@ -24,8 +21,18 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Network-First strategy: Always fetch latest from network, fall back to cache when offline
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
+    fetch(e.request)
+      .then((networkRes) => {
+        if (networkRes && networkRes.status === 200) {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
+        }
+        return networkRes;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
