@@ -1349,24 +1349,24 @@
         reader.onerror = () => reject(reader.error);
         reader.readAsArrayBuffer(file);
       });
-      // 2. Decode Audio with smooth animation
+      // 2. Fast Native Decode with continuous smooth animation
       onProgress(10, '音声波形を展開中...');
-      let decodeProgress = 10;
+      let decodeElapsedSec = 0;
+      let currentProgress = 10;
       const decodeTimer = setInterval(() => {
-        if (decodeProgress < 16) {
-          decodeProgress++;
-          onProgress(decodeProgress, '音声波形を展開中...');
+        decodeElapsedSec += 0.5;
+        if (currentProgress < 19) {
+          const delta = (19.5 - currentProgress) * 0.08;
+          currentProgress = Math.min(19, currentProgress + Math.max(0.05, delta));
+          const roundedPct = Math.floor(currentProgress);
+          const notice = decodeElapsedSec > 4 ? ' (大容量データを処理中...)' : '';
+          onProgress(roundedPct, `音声波形を展開中...${notice}`);
         }
-      }, 150);
+      }, 500);
 
-      const targetSampleRate = 16000;
+      // Use native AudioContext without forced sampleRate to avoid slow browser C++ FIR resampling
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      let tempAudioCtx = null;
-      try {
-        tempAudioCtx = new AudioContextClass({ sampleRate: targetSampleRate });
-      } catch (e) {
-        tempAudioCtx = new AudioContextClass();
-      }
+      const tempAudioCtx = new AudioContextClass();
 
       const decodedAudio = await new Promise((resolve, reject) => {
         let resolved = false;
@@ -1396,7 +1396,7 @@
       clearInterval(decodeTimer);
       try { tempAudioCtx.close(); } catch(e){}
 
-      onProgress(17, '16kHzモノラルに高速変換中...');
+      onProgress(19, '16kHzモノラルに高速変換中...');
 
       // 3. Fast direct downsampling and mono mixing (0.1s in-memory single-pass)
       const origDuration = decodedAudio.duration;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lecture-audio-compressor-v8';
+const CACHE_NAME = 'lecture-audio-compressor-v9';
 const ASSETS = [
   './',
   './index.html',
