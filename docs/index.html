@@ -1399,6 +1399,7 @@
       onProgress(19, '16kHzモノラルに高速変換中...');
 
       // 3. Fast direct downsampling and mono mixing (0.1s in-memory single-pass)
+      const targetSampleRate = 16000;
       const origDuration = decodedAudio.duration;
       let startSec = 0;
       let endSec = origDuration;
