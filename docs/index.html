@@ -408,12 +408,184 @@
       gap: 6px;
     }
 
-    .privacy-notice {
-      text-align: center;
+    /* Trimming Section */
+    .trim-card {
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      display: none;
+    }
+
+    .trim-time-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .trim-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .trim-label {
       font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.4;
-      padding: 0 8px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .trim-input-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .trim-input {
+      width: 76px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #ffffff;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      padding: 5px 2px;
+      outline: none;
+    }
+
+    .trim-input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-micro {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: var(--text-sub);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 5px 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-micro:hover {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      border-color: var(--primary);
+    }
+
+    .trim-duration-badge {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.15);
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .range-slider-container {
+      position: relative;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+    }
+
+    .range-track {
+      position: absolute;
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .range-highlight {
+      position: absolute;
+      height: 8px;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      border-radius: 4px;
+      left: 0%;
+      width: 100%;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .trim-slider {
+      position: absolute;
+      width: 100%;
+      margin: 0;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      outline: none;
+    }
+
+    .trim-slider::-webkit-slider-thumb {
+      pointer-events: auto;
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #3b82f6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .trim-slider::-webkit-slider-thumb:active {
+      transform: scale(1.15);
+    }
+
+    .trim-slider::-moz-range-thumb {
+      pointer-events: auto;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #3b82f6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .btn-preview {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid var(--primary);
+      color: #93c5fd;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-preview:hover {
+      background: rgba(59, 130, 246, 0.35);
+      color: #ffffff;
+    }
+
+    .btn-preview:active {
+      transform: scale(0.96);
     }
   </style>
   <script src="lame.min.js"></script>
@@ -480,6 +652,63 @@
           <input type="checkbox" id="monoToggle" checked>
           <span class="slider"></span>
         </label>
+      </div>
+
+      <!-- Trimming Option -->
+      <div class="toggle-row" style="margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+        <div>
+          <span>✂️ 区間トリミング</span>
+          <span style="display:block; font-size:10px; color:var(--text-muted); margin-top:2px;">講義の必要な部分だけを切り出し圧縮</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="trimToggle" onchange="toggleTrimSection()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Trimming Controls Panel -->
+      <div class="trim-card" id="trimCard">
+        <div class="trim-time-box">
+          <div class="trim-col">
+            <span class="trim-label">開始時間</span>
+            <div class="trim-input-group">
+              <input type="text" id="trimStartInput" class="trim-input" value="00:00:00" placeholder="00:00:00" onchange="onTrimInputChange()">
+              <button type="button" class="btn-micro" onclick="setTrimStartToCurrent()">現位置</button>
+            </div>
+          </div>
+
+          <div class="trim-col" style="align-items: center;">
+            <span class="trim-label">切り出し範囲</span>
+            <div class="trim-duration-badge" id="trimDurationBadge">--:--</div>
+          </div>
+
+          <div class="trim-col" style="align-items: flex-end;">
+            <span class="trim-label">終了時間</span>
+            <div class="trim-input-group">
+              <button type="button" class="btn-micro" onclick="setTrimEndToCurrent()">現位置</button>
+              <input type="text" id="trimEndInput" class="trim-input" value="00:00:00" placeholder="00:00:00" onchange="onTrimInputChange()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Range Slider with dual thumbs -->
+        <div class="range-slider-container">
+          <div class="range-track"></div>
+          <div class="range-highlight" id="rangeHighlight"></div>
+          <input type="range" id="trimStartSlider" class="trim-slider" min="0" max="100" value="0" step="0.1" oninput="onTrimSliderInput('start')">
+          <input type="range" id="trimEndSlider" class="trim-slider" min="0" max="100" value="100" step="0.1" oninput="onTrimSliderInput('end')">
+        </div>
+
+        <!-- Preview Audio Bar -->
+        <div class="preview-bar">
+          <button type="button" class="btn-preview" id="btnPreview" onclick="togglePreviewPlay()">
+            <span id="previewPlayIcon">▶</span>
+            <span id="previewPlayText">選択区間を試聴</span>
+          </button>
+          <div style="font-size:11px; color:var(--text-sub); display:flex; align-items:center; gap:5px;">
+            再生位置: <span id="previewCurrentTime" style="font-family:monospace; color:#ffffff; font-weight:600;">00:00:00</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -551,6 +780,26 @@
     const shareBtn = document.getElementById('shareBtn');
     const outSizeLabel = document.getElementById('outSizeLabel');
 
+    // Trimming elements
+    const trimToggle = document.getElementById('trimToggle');
+    const trimCard = document.getElementById('trimCard');
+    const trimStartInput = document.getElementById('trimStartInput');
+    const trimEndInput = document.getElementById('trimEndInput');
+    const trimDurationBadge = document.getElementById('trimDurationBadge');
+    const trimStartSlider = document.getElementById('trimStartSlider');
+    const trimEndSlider = document.getElementById('trimEndSlider');
+    const rangeHighlight = document.getElementById('rangeHighlight');
+    const btnPreview = document.getElementById('btnPreview');
+    const previewPlayIcon = document.getElementById('previewPlayIcon');
+    const previewPlayText = document.getElementById('previewPlayText');
+    const previewCurrentTime = document.getElementById('previewCurrentTime');
+
+    let trimStartTime = 0;
+    let trimEndTime = 0;
+    let previewAudio = new Audio();
+    let isPreviewPlaying = false;
+    let selectedFileBlobUrl = null;
+
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         handleFileSelect(e.target.files[0]);
@@ -579,6 +828,179 @@
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
+    function formatFullTime(sec) {
+      if (!sec || isNaN(sec) || sec < 0) sec = 0;
+      const totalSec = Math.floor(sec);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function parseTimeString(str) {
+      if (!str) return 0;
+      const parts = str.trim().split(':').map(p => parseFloat(p) || 0);
+      if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      } else if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+      } else if (parts.length === 1) {
+        return parts[0];
+      }
+      return 0;
+    }
+
+    function toggleTrimSection() {
+      const isChecked = trimToggle.checked;
+      trimCard.style.display = isChecked ? 'block' : 'none';
+      if (isChecked) {
+        if (trimEndTime === 0 && audioDuration > 0) {
+          trimEndTime = audioDuration;
+        }
+        updateTrimUI();
+      } else {
+        pausePreview();
+      }
+      updateEstimate();
+    }
+
+    function updateTrimUI() {
+      if (!audioDuration || audioDuration <= 0) return;
+      trimStartTime = Math.max(0, Math.min(trimStartTime, audioDuration));
+      trimEndTime = Math.max(trimStartTime, Math.min(trimEndTime, audioDuration));
+
+      trimStartInput.value = formatFullTime(trimStartTime);
+      trimEndInput.value = formatFullTime(trimEndTime);
+
+      const trimLen = Math.max(0, trimEndTime - trimStartTime);
+      trimDurationBadge.textContent = formatTime(trimLen);
+
+      const startPct = (trimStartTime / audioDuration) * 100;
+      const endPct = (trimEndTime / audioDuration) * 100;
+
+      trimStartSlider.value = startPct;
+      trimEndSlider.value = endPct;
+
+      rangeHighlight.style.left = startPct + '%';
+      rangeHighlight.style.width = Math.max(0, endPct - startPct) + '%';
+    }
+
+    function onTrimSliderInput(type) {
+      if (!audioDuration || audioDuration <= 0) return;
+      let startVal = parseFloat(trimStartSlider.value);
+      let endVal = parseFloat(trimEndSlider.value);
+
+      if (type === 'start') {
+        if (startVal > endVal) {
+          startVal = endVal;
+          trimStartSlider.value = startVal;
+        }
+      } else {
+        if (endVal < startVal) {
+          endVal = startVal;
+          trimEndSlider.value = endVal;
+        }
+      }
+
+      trimStartTime = (startVal / 100) * audioDuration;
+      trimEndTime = (endVal / 100) * audioDuration;
+
+      trimStartInput.value = formatFullTime(trimStartTime);
+      trimEndInput.value = formatFullTime(trimEndTime);
+      const trimLen = Math.max(0, trimEndTime - trimStartTime);
+      trimDurationBadge.textContent = formatTime(trimLen);
+
+      rangeHighlight.style.left = startVal + '%';
+      rangeHighlight.style.width = Math.max(0, endVal - startVal) + '%';
+
+      if (isPreviewPlaying) {
+        previewAudio.currentTime = trimStartTime;
+      }
+
+      updateEstimate();
+    }
+
+    function onTrimInputChange() {
+      if (!audioDuration || audioDuration <= 0) return;
+      let start = parseTimeString(trimStartInput.value);
+      let end = parseTimeString(trimEndInput.value);
+
+      if (end <= start) {
+        end = Math.min(audioDuration, start + 30);
+      }
+      trimStartTime = Math.max(0, Math.min(start, audioDuration));
+      trimEndTime = Math.max(trimStartTime, Math.min(end, audioDuration));
+
+      updateTrimUI();
+      updateEstimate();
+    }
+
+    function setTrimStartToCurrent() {
+      if (!previewAudio || isNaN(previewAudio.currentTime)) return;
+      trimStartTime = previewAudio.currentTime;
+      if (trimEndTime < trimStartTime) trimEndTime = audioDuration;
+      updateTrimUI();
+      updateEstimate();
+    }
+
+    function setTrimEndToCurrent() {
+      if (!previewAudio || isNaN(previewAudio.currentTime)) return;
+      trimEndTime = previewAudio.currentTime;
+      if (trimStartTime > trimEndTime) trimStartTime = 0;
+      updateTrimUI();
+      updateEstimate();
+    }
+
+    function togglePreviewPlay() {
+      if (!selectedFileBlobUrl) return;
+
+      if (isPreviewPlaying) {
+        pausePreview();
+      } else {
+        startPreview();
+      }
+    }
+
+    function startPreview() {
+      if (!selectedFileBlobUrl) return;
+      if (previewAudio.src !== selectedFileBlobUrl) {
+        previewAudio.src = selectedFileBlobUrl;
+      }
+
+      if (previewAudio.currentTime < trimStartTime || previewAudio.currentTime >= trimEndTime) {
+        previewAudio.currentTime = trimStartTime;
+      }
+
+      previewAudio.play().then(() => {
+        isPreviewPlaying = true;
+        previewPlayIcon.textContent = '⏸';
+        previewPlayText.textContent = '一時停止';
+      }).catch(err => {
+        console.warn('Preview playback failed:', err);
+      });
+    }
+
+    function pausePreview() {
+      previewAudio.pause();
+      isPreviewPlaying = false;
+      previewPlayIcon.textContent = '▶';
+      previewPlayText.textContent = '選択区間を試聴';
+    }
+
+    previewAudio.addEventListener('timeupdate', () => {
+      previewCurrentTime.textContent = formatFullTime(previewAudio.currentTime);
+      if (isPreviewPlaying && trimToggle && trimToggle.checked) {
+        if (previewAudio.currentTime >= trimEndTime) {
+          pausePreview();
+          previewAudio.currentTime = trimStartTime;
+        }
+      }
+    });
+
+    previewAudio.addEventListener('ended', () => {
+      pausePreview();
+    });
+
     function formatBytes(bytes) {
       if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 ** 3)).toFixed(1) + " GB";
       if (bytes >= 1024 * 1024) return (bytes / (1024 ** 2)).toFixed(1) + " MB";
@@ -601,11 +1023,20 @@
       return 64;
     }
 
+    function getEffectiveDuration() {
+      if (trimToggle && trimToggle.checked && trimEndTime > trimStartTime) {
+        return trimEndTime - trimStartTime;
+      }
+      return audioDuration || 5400;
+    }
+
     function updateEstimate() {
       if (!selectedFile) return;
-      const kbps = calculateBitrate(audioDuration, selectedMode);
-      const estBytes = (kbps * 1000 / 8) * (audioDuration || 5400);
-      fileEst.textContent = `約 ${(estBytes / (1024 * 1024)).toFixed(1)} MB (${kbps}kbps)`;
+      const effDur = getEffectiveDuration();
+      const kbps = calculateBitrate(effDur, selectedMode);
+      const estBytes = (kbps * 1000 / 8) * effDur;
+      const trimNotice = (trimToggle && trimToggle.checked && trimEndTime > trimStartTime) ? ' (区間抽出)' : '';
+      fileEst.textContent = `約 ${(estBytes / (1024 * 1024)).toFixed(1)} MB (${kbps}kbps)${trimNotice}`;
     }
 
     function selectMode(mode) {
@@ -624,18 +1055,26 @@
       resultContainer.style.display = 'none';
       btnConvert.disabled = false;
 
+      pausePreview();
+      if (selectedFileBlobUrl) {
+        URL.revokeObjectURL(selectedFileBlobUrl);
+      }
+      selectedFileBlobUrl = URL.createObjectURL(file);
+      previewAudio.src = selectedFileBlobUrl;
+
       // Probe duration using audio element
       audioDuration = 0;
       fileDuration.textContent = "解析中...";
       
-      const audioUrl = URL.createObjectURL(file);
       const tempAudio = new Audio();
-      tempAudio.src = audioUrl;
+      tempAudio.src = selectedFileBlobUrl;
 
       tempAudio.addEventListener('loadedmetadata', () => {
         audioDuration = tempAudio.duration;
         fileDuration.textContent = formatTime(audioDuration);
-        URL.revokeObjectURL(audioUrl);
+        trimStartTime = 0;
+        trimEndTime = audioDuration;
+        updateTrimUI();
         updateEstimate();
       });
 
@@ -643,7 +1082,9 @@
         // Fallback estimate assuming 90 minutes if metadata fails on some mobile codecs
         audioDuration = 90 * 60;
         fileDuration.textContent = "約90分(推定)";
-        URL.revokeObjectURL(audioUrl);
+        trimStartTime = 0;
+        trimEndTime = audioDuration;
+        updateTrimUI();
         updateEstimate();
       });
     }
@@ -651,6 +1092,7 @@
     async function startConversion() {
       if (!selectedFile) return;
 
+      pausePreview();
       btnConvert.disabled = true;
       progressContainer.style.display = 'block';
       resultContainer.style.display = 'none';
@@ -775,11 +1217,26 @@
           monoData = resampledAudio.getChannelData(0);
         }
 
+        // Check trimming
+        const isTrimActive = trimToggle && trimToggle.checked && (trimEndTime > trimStartTime);
+        let finalDuration = audioDuration;
+
+        if (isTrimActive) {
+          const startSec = Math.max(0, Math.min(trimStartTime, audioDuration));
+          const endSec = Math.min(audioDuration, Math.max(startSec + 0.1, trimEndTime));
+          finalDuration = endSec - startSec;
+
+          const startSample = Math.floor(startSec * targetSampleRate);
+          const endSample = Math.min(monoData.length, Math.ceil(endSec * targetSampleRate));
+          monoData = monoData.subarray(startSample, endSample);
+        }
+
         // 4. Parallel Multi-Core MP3 Encoding via Web Workers (20% -> 100%)
-        const kbps = calculateBitrate(audioDuration, selectedMode);
+        const kbps = calculateBitrate(finalDuration, selectedMode);
         const cores = navigator.hardwareConcurrency || 4;
         const numWorkers = Math.max(1, Math.min(cores, 6));
-        statusLabel.textContent = `マルチコア高速MP3(${kbps}kbps, ${numWorkers}並列)に圧縮中...`;
+        const trimLabel = isTrimActive ? ' [区間切り出し]' : '';
+        statusLabel.textContent = `マルチコア高速MP3(${kbps}kbps, ${numWorkers}並列)${trimLabel}に圧縮中...`;
         progressBar.style.width = '20%';
         percentLabel.textContent = '20%';
 
@@ -787,11 +1244,11 @@
           progressBar.style.width = '100%';
           percentLabel.textContent = '100%';
           progressSpinner.style.display = 'none';
-          statusLabel.textContent = '変換完了！';
+          statusLabel.textContent = isTrimActive ? '区間切り出し完了！' : '変換完了！';
 
           convertedBlob = new Blob(mp3Data, { type: 'audio/mp3' });
           const origBase = selectedFile.name.replace(/\.[^/.]+$/, "");
-          convertedFileName = `${origBase}_compressed.mp3`;
+          convertedFileName = isTrimActive ? `${origBase}_trimmed.mp3` : `${origBase}_compressed.mp3`;
 
           const blobUrl = URL.createObjectURL(convertedBlob);
           downloadBtn.href = blobUrl;
