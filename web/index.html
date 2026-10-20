@@ -1368,7 +1368,7 @@
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       const tempAudioCtx = new AudioContextClass();
 
-      const decodedAudio = await new Promise((resolve, reject) => {
+      let decodedAudio = await new Promise((resolve, reject) => {
         let resolved = false;
         const onSuccess = (result) => {
           if (!resolved) {
@@ -1423,8 +1423,8 @@
       // Ultra-fast single-pass linear interpolation & stereo downmixing
       for (let i = 0; i < targetLength; i++) {
         const srcPos = startSrcSample + i * ratio;
-        const idx = Math.floor(srcPos);
-        const frac = srcPos - idx;
+        const idx = Math.min(Math.floor(srcPos), ch0.length - 1);
+        const frac = srcPos - Math.floor(srcPos);
         const nextIdx = Math.min(idx + 1, ch0.length - 1);
 
         if (ch1) {
@@ -1435,6 +1435,9 @@
           monoData[i] = ch0[idx] * (1 - frac) + ch0[nextIdx] * frac;
         }
       }
+
+      // Immediately release massive PCM AudioBuffer to allow browser GC before MP3 encoding
+      decodedAudio = null;
 
       // 4. Parallel MP3 Encoding
       const kbps = calculateBitrate(finalDuration, options.selectedMode, options.customTargetMb);
