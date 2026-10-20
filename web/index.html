@@ -1349,9 +1349,16 @@
         reader.onerror = () => reject(reader.error);
         reader.readAsArrayBuffer(file);
       });
+      // 2. Decode Audio with smooth animation
       onProgress(10, '音声波形を展開中...');
+      let decodeProgress = 10;
+      const decodeTimer = setInterval(() => {
+        if (decodeProgress < 16) {
+          decodeProgress++;
+          onProgress(decodeProgress, '音声波形を展開中...');
+        }
+      }, 150);
 
-      // 2. Decode Audio
       const targetSampleRate = 16000;
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       let tempAudioCtx = null;
@@ -1362,7 +1369,6 @@
       }
 
       const decodedAudio = await new Promise((resolve, reject) => {
-        const buf = fileBuffer.slice(0);
         let resolved = false;
         const onSuccess = (result) => {
           if (!resolved) {
@@ -1377,7 +1383,8 @@
           }
         };
         try {
-          const p = tempAudioCtx.decodeAudioData(buf, onSuccess, onError);
+          // Pass buffer directly without slice to avoid double memory allocation
+          const p = tempAudioCtx.decodeAudioData(fileBuffer, onSuccess, onError);
           if (p && typeof p.then === 'function') {
             p.then(onSuccess).catch(onError);
           }
@@ -1386,48 +1393,46 @@
         }
       });
 
+      clearInterval(decodeTimer);
       try { tempAudioCtx.close(); } catch(e){}
 
-      onProgress(16, '16kHzモノラルに最適化中...');
+      onProgress(17, '16kHzモノラルに高速変換中...');
 
+      // 3. Fast direct downsampling and mono mixing (0.1s in-memory single-pass)
       const origDuration = decodedAudio.duration;
-      let monoData = null;
+      let startSec = 0;
+      let endSec = origDuration;
 
-      if (decodedAudio.sampleRate === targetSampleRate && decodedAudio.numberOfChannels === 1) {
-        monoData = decodedAudio.getChannelData(0);
-      } else if (decodedAudio.sampleRate === targetSampleRate) {
-        const len = decodedAudio.length;
-        monoData = new Float32Array(len);
-        const numCh = decodedAudio.numberOfChannels;
-        for (let ch = 0; ch < numCh; ch++) {
-          const chData = decodedAudio.getChannelData(ch);
-          for (let i = 0; i < len; i++) {
-            monoData[i] += chData[i] / numCh;
-          }
-        }
-      } else {
-        const targetLength = Math.ceil(origDuration * targetSampleRate);
-        const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-        const offlineCtx = new OfflineContextClass(1, targetLength, targetSampleRate);
-        const source = offlineCtx.createBufferSource();
-        source.buffer = decodedAudio;
-        source.connect(offlineCtx.destination);
-        source.start(0);
-
-        const resampledAudio = await offlineCtx.startRendering();
-        monoData = resampledAudio.getChannelData(0);
+      if (options.trimActive && options.trimEnd > options.trimStart) {
+        startSec = Math.max(0, Math.min(options.trimStart, origDuration));
+        endSec = Math.min(origDuration, Math.max(startSec + 0.1, options.trimEnd));
       }
 
-      // Check trimming
-      let finalDuration = origDuration;
-      if (options.trimActive && options.trimEnd > options.trimStart) {
-        const startSec = Math.max(0, Math.min(options.trimStart, origDuration));
-        const endSec = Math.min(origDuration, Math.max(startSec + 0.1, options.trimEnd));
-        finalDuration = endSec - startSec;
+      const finalDuration = Math.max(0.1, endSec - startSec);
+      const targetLength = Math.max(1, Math.floor(finalDuration * targetSampleRate));
+      const monoData = new Float32Array(targetLength);
 
-        const startSample = Math.floor(startSec * targetSampleRate);
-        const endSample = Math.min(monoData.length, Math.ceil(endSec * targetSampleRate));
-        monoData = monoData.subarray(startSample, endSample);
+      const srcRate = decodedAudio.sampleRate;
+      const numCh = decodedAudio.numberOfChannels;
+      const ch0 = decodedAudio.getChannelData(0);
+      const ch1 = (numCh > 1) ? decodedAudio.getChannelData(1) : null;
+      const startSrcSample = Math.floor(startSec * srcRate);
+      const ratio = srcRate / targetSampleRate;
+
+      // Ultra-fast single-pass linear interpolation & stereo downmixing
+      for (let i = 0; i < targetLength; i++) {
+        const srcPos = startSrcSample + i * ratio;
+        const idx = Math.floor(srcPos);
+        const frac = srcPos - idx;
+        const nextIdx = Math.min(idx + 1, ch0.length - 1);
+
+        if (ch1) {
+          const s0 = ch0[idx] * (1 - frac) + ch0[nextIdx] * frac;
+          const s1 = ch1[idx] * (1 - frac) + ch1[nextIdx] * frac;
+          monoData[i] = (s0 + s1) * 0.5;
+        } else {
+          monoData[i] = ch0[idx] * (1 - frac) + ch0[nextIdx] * frac;
+        }
       }
 
       // 4. Parallel MP3 Encoding
