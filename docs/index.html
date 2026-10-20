@@ -594,26 +594,24 @@
 
   <div class="container">
     <header>
-      <div class="badge">スマホ単体完結 / サーバー送信なし</div>
-      <h1>講義音声 100MB圧縮</h1>
-      <p class="subtitle">90分の講義をスマホ内で約40MBのAI向け高音質MP3に圧縮</p>
+      <h1>音声圧縮</h1>
+      <p class="subtitle">100MB未満のMP3に最適化</p>
     </header>
 
     <!-- PWA Install Banner -->
     <div id="installBanner" style="display:none; background: linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(37,99,235,0.3) 100%); border: 1px solid rgba(59,130,246,0.4); border-radius: 14px; padding: 12px 14px; align-items: center; justify-content: space-between; gap: 10px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 20px;">📲</span>
-        <div style="font-size: 13px; font-weight: 600; color: #93c5fd;">ホーム画面にインストール</div>
+        <div style="font-size: 13px; font-weight: 600; color: #93c5fd;">ホーム画面に追加</div>
       </div>
-      <button onclick="promptInstallApp()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">インストール</button>
+      <button onclick="promptInstallApp()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">追加</button>
     </div>
 
     <div class="card">
       <!-- File Selector -->
       <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <div class="drop-icon">🎙️</div>
-        <div class="drop-title">録音ファイルを選択</div>
-        <div class="drop-desc">ボイスメモ / m4a / mp3 / wav / mp4動画</div>
+        <div class="drop-title">ファイルを選択 または ドロップ</div>
       </div>
       <input type="file" id="fileInput" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.mp4,.mov">
 
@@ -621,33 +619,30 @@
       <div class="file-card" id="fileCard">
         <div class="file-name" id="fileName">lecture.m4a</div>
         <div class="file-meta">
-          <div class="meta-item">再生時間: <span class="meta-val" id="fileDuration">--:--</span></div>
+          <div class="meta-item">時間: <span class="meta-val" id="fileDuration">--:--</span></div>
           <div class="meta-item">元サイズ: <span class="meta-val" id="fileSize">-- MB</span></div>
-          <div class="meta-item">変換後予想: <span class="meta-val" id="fileEst" style="color:#60a5fa;">約 -- MB</span></div>
+          <div class="meta-item">予想: <span class="meta-val" id="fileEst" style="color:#60a5fa;">約 -- MB</span></div>
         </div>
       </div>
     </div>
 
     <!-- Settings Card -->
     <div class="card">
-      <div class="settings-title">圧縮設定</div>
+      <div class="settings-title">設定</div>
       <div class="pill-group">
         <div class="pill-btn active" data-mode="ai_voice" onclick="selectMode('ai_voice')">
-          AI最適化
-          <span class="pill-sub">64k / 約42MB</span>
+          標準 (AI推奨)
         </div>
         <div class="pill-btn" data-mode="fit_target" onclick="selectMode('fit_target')">
-          100MB上限
-          <span class="pill-sub">最高音質フィット</span>
+          最高音質
         </div>
         <div class="pill-btn" data-mode="compact" onclick="selectMode('compact')">
-          超軽量
-          <span class="pill-sub">32k / 約21MB</span>
+          軽量
         </div>
       </div>
 
       <div class="toggle-row">
-        <span>モノラル化 (ファイル半減・声の明瞭度UP)</span>
+        <span>モノラル化</span>
         <label class="toggle-switch">
           <input type="checkbox" id="monoToggle" checked>
           <span class="slider"></span>
@@ -656,10 +651,7 @@
 
       <!-- Trimming Option -->
       <div class="toggle-row" style="margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-        <div>
-          <span>✂️ 区間トリミング</span>
-          <span style="display:block; font-size:10px; color:var(--text-muted); margin-top:2px;">講義の必要な部分だけを切り出し圧縮</span>
-        </div>
+        <span>✂️ トリミング</span>
         <label class="toggle-switch">
           <input type="checkbox" id="trimToggle" onchange="toggleTrimSection()">
           <span class="slider"></span>
@@ -678,7 +670,7 @@
           </div>
 
           <div class="trim-col" style="align-items: center;">
-            <span class="trim-label">切り出し範囲</span>
+            <span class="trim-label">範囲</span>
             <div class="trim-duration-badge" id="trimDurationBadge">--:--</div>
           </div>
 
@@ -703,10 +695,10 @@
         <div class="preview-bar">
           <button type="button" class="btn-preview" id="btnPreview" onclick="togglePreviewPlay()">
             <span id="previewPlayIcon">▶</span>
-            <span id="previewPlayText">選択区間を試聴</span>
+            <span id="previewPlayText">試聴</span>
           </button>
           <div style="font-size:11px; color:var(--text-sub); display:flex; align-items:center; gap:5px;">
-            再生位置: <span id="previewCurrentTime" style="font-family:monospace; color:#ffffff; font-weight:600;">00:00:00</span>
+            位置: <span id="previewCurrentTime" style="font-family:monospace; color:#ffffff; font-weight:600;">00:00:00</span>
           </div>
         </div>
       </div>
@@ -715,7 +707,7 @@
     <!-- Execution Card -->
     <div class="card">
       <button class="btn-main" id="btnConvert" disabled onclick="startConversion()">
-        ⚡ 100MB以下に変換開始
+        圧縮開始
       </button>
 
       <!-- Progress -->
@@ -735,16 +727,16 @@
       <!-- Result -->
       <div class="result-container" id="resultContainer">
         <a class="btn-download" id="downloadBtn" download="lecture_compressed.mp3">
-          📥 変換済みMP3を保存 (<span id="outSizeLabel">0 MB</span>)
+          📥 保存 (<span id="outSizeLabel">0 MB</span>)
         </a>
         <button class="btn-share" id="shareBtn" onclick="shareAudio()">
-          📤 AIアプリ / ファイルに直接共有
+          📤 共有
         </button>
       </div>
     </div>
 
     <div class="privacy-notice">
-      🔒 完全端末内処理: 音声データは外部サーバーに一切送信されません。<br>通信量を消費せず、オフライン環境でも高速に動作します。
+      🔒 完全端末内処理 (オフライン動作)
     </div>
   </div>
 
