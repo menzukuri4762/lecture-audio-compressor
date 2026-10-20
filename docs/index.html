@@ -587,6 +587,124 @@
     .btn-preview:active {
       transform: scale(0.96);
     }
+
+    /* Batch File List */
+    .batch-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+    .batch-files-scroll {
+      max-height: 120px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding-right: 4px;
+    }
+    .batch-file-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-sub);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 5px 8px;
+      border-radius: 6px;
+    }
+    .batch-file-row-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+      color: var(--text-main);
+    }
+
+    /* Batch Result List */
+    .batch-result-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      width: 100%;
+    }
+    .batch-result-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .batch-res-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .batch-res-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+    .batch-res-size {
+      font-size: 11px;
+      color: #60a5fa;
+      margin-top: 2px;
+    }
+    .batch-res-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .btn-res-action {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .btn-res-action:hover {
+      background: rgba(59, 130, 246, 0.3);
+      color: #ffffff;
+    }
+    .btn-batch-all {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .btn-batch-all:active {
+      transform: scale(0.98);
+    }
   </style>
   <script src="lame.min.js"></script>
 </head>
@@ -613,9 +731,9 @@
         <div class="drop-icon">🎙️</div>
         <div class="drop-title">ファイルを選択 または ドロップ</div>
       </div>
-      <input type="file" id="fileInput" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.mp4,.mov">
+      <input type="file" id="fileInput" multiple accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.mp4,.mov">
 
-      <!-- Selected File Info -->
+      <!-- Selected File Info (Single) -->
       <div class="file-card" id="fileCard">
         <div class="file-name" id="fileName">lecture.m4a</div>
         <div class="file-meta">
@@ -623,6 +741,15 @@
           <div class="meta-item">元サイズ: <span class="meta-val" id="fileSize">-- MB</span></div>
           <div class="meta-item">予想: <span class="meta-val" id="fileEst" style="color:#60a5fa;">約 -- MB</span></div>
         </div>
+      </div>
+
+      <!-- Selected Files Info (Batch) -->
+      <div class="file-card" id="batchFileCard" style="display:none;">
+        <div class="batch-summary">
+          <span id="batchCountLabel">0件のファイル</span>
+          <span id="batchTotalSizeLabel" style="color:#60a5fa; font-size:12px;">合計 0 MB</span>
+        </div>
+        <div class="batch-files-scroll" id="batchFilesScroll"></div>
       </div>
     </div>
 
@@ -649,8 +776,8 @@
         </label>
       </div>
 
-      <!-- Trimming Option -->
-      <div class="toggle-row" style="margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+      <!-- Trimming Option (Single File Only) -->
+      <div class="toggle-row" id="trimToggleRow" style="margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
         <span>✂️ トリミング</span>
         <label class="toggle-switch">
           <input type="checkbox" id="trimToggle" onchange="toggleTrimSection()">
@@ -724,7 +851,7 @@
         </div>
       </div>
 
-      <!-- Result -->
+      <!-- Result (Single) -->
       <div class="result-container" id="resultContainer">
         <a class="btn-download" id="downloadBtn" download="lecture_compressed.mp3">
           📥 保存 (<span id="outSizeLabel">0 MB</span>)
@@ -732,6 +859,14 @@
         <button class="btn-share" id="shareBtn" onclick="shareAudio()">
           📤 共有
         </button>
+      </div>
+
+      <!-- Result (Batch) -->
+      <div id="batchResultContainer" style="display:none; margin-top:12px;">
+        <button type="button" class="btn-batch-all" id="btnDownloadAll" onclick="downloadAllBatch()">
+          📥 全ファイルを一括保存 (<span id="batchTotalSavedLabel">0件</span>)
+        </button>
+        <div class="batch-result-list" id="batchResultList"></div>
       </div>
     </div>
 
@@ -742,10 +877,12 @@
 
   <script>
     let selectedFile = null;
+    let selectedFiles = [];
     let audioDuration = 0;
     let selectedMode = 'ai_voice';
     let convertedBlob = null;
     let convertedFileName = '';
+    let convertedResults = [];
     let lameJsSource = '';
 
     // Preload lamejs source for Web Worker
@@ -757,6 +894,10 @@
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
     const fileCard = document.getElementById('fileCard');
+    const batchFileCard = document.getElementById('batchFileCard');
+    const batchCountLabel = document.getElementById('batchCountLabel');
+    const batchTotalSizeLabel = document.getElementById('batchTotalSizeLabel');
+    const batchFilesScroll = document.getElementById('batchFilesScroll');
     const fileName = document.getElementById('fileName');
     const fileDuration = document.getElementById('fileDuration');
     const fileSize = document.getElementById('fileSize');
@@ -768,9 +909,13 @@
     const statusLabel = document.getElementById('statusLabel');
     const percentLabel = document.getElementById('percentLabel');
     const resultContainer = document.getElementById('resultContainer');
+    const batchResultContainer = document.getElementById('batchResultContainer');
+    const batchResultList = document.getElementById('batchResultList');
+    const batchTotalSavedLabel = document.getElementById('batchTotalSavedLabel');
     const downloadBtn = document.getElementById('downloadBtn');
     const shareBtn = document.getElementById('shareBtn');
     const outSizeLabel = document.getElementById('outSizeLabel');
+    const trimToggleRow = document.getElementById('trimToggleRow');
 
     // Trimming elements
     const trimToggle = document.getElementById('trimToggle');
@@ -792,9 +937,13 @@
     let isPreviewPlaying = false;
     let selectedFileBlobUrl = null;
 
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        handleFileSelect(e.target.files[0]);
+      if (e.target.files && e.target.files.length > 0) {
+        handleFilesSelect(e.target.files);
       }
     });
 
@@ -804,8 +953,8 @@
     dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropZone.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-      if (e.dataTransfer.files.length > 0) {
-        handleFileSelect(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFilesSelect(e.dataTransfer.files);
       }
     });
 
@@ -1039,222 +1188,188 @@
       updateEstimate();
     }
 
-    async function handleFileSelect(file) {
-      selectedFile = file;
-      fileName.textContent = file.name;
-      fileSize.textContent = formatBytes(file.size);
-      fileCard.style.display = 'block';
+    function handleFilesSelect(filesList) {
+      selectedFiles = Array.from(filesList);
+      if (selectedFiles.length === 0) return;
+
+      convertedResults = [];
       resultContainer.style.display = 'none';
-      btnConvert.disabled = false;
-
+      batchResultContainer.style.display = 'none';
+      batchResultList.innerHTML = '';
+      progressContainer.style.display = 'none';
       pausePreview();
-      if (selectedFileBlobUrl) {
-        URL.revokeObjectURL(selectedFileBlobUrl);
+
+      if (selectedFiles.length === 1) {
+        selectedFile = selectedFiles[0];
+        batchFileCard.style.display = 'none';
+        fileCard.style.display = 'block';
+        if (trimToggleRow) trimToggleRow.style.display = 'flex';
+        btnConvert.textContent = '圧縮開始';
+        btnConvert.disabled = false;
+
+        fileName.textContent = selectedFile.name;
+        fileSize.textContent = formatBytes(selectedFile.size);
+
+        if (selectedFileBlobUrl) {
+          URL.revokeObjectURL(selectedFileBlobUrl);
+        }
+        selectedFileBlobUrl = URL.createObjectURL(selectedFile);
+        previewAudio.src = selectedFileBlobUrl;
+
+        audioDuration = 0;
+        fileDuration.textContent = '解析中...';
+
+        const tempAudio = new Audio();
+        tempAudio.src = selectedFileBlobUrl;
+
+        tempAudio.addEventListener('loadedmetadata', () => {
+          audioDuration = tempAudio.duration;
+          fileDuration.textContent = formatTime(audioDuration);
+          trimStartTime = 0;
+          trimEndTime = audioDuration;
+          updateTrimUI();
+          updateEstimate();
+        });
+
+        tempAudio.addEventListener('error', () => {
+          audioDuration = 90 * 60;
+          fileDuration.textContent = '約90分(推定)';
+          trimStartTime = 0;
+          trimEndTime = audioDuration;
+          updateTrimUI();
+          updateEstimate();
+        });
+      } else {
+        selectedFile = selectedFiles[0]; // fallback
+        fileCard.style.display = 'none';
+        batchFileCard.style.display = 'block';
+        if (trimToggleRow) trimToggleRow.style.display = 'none';
+        if (trimToggle) trimToggle.checked = false;
+        toggleTrimSection();
+
+        const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+        batchCountLabel.textContent = `${selectedFiles.length}件のファイル選択中`;
+        batchTotalSizeLabel.textContent = `合計 ${formatBytes(totalBytes)}`;
+
+        batchFilesScroll.innerHTML = selectedFiles.map(f => `
+          <div class="batch-file-row">
+            <span class="batch-file-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
+            <span>${formatBytes(f.size)}</span>
+          </div>
+        `).join('');
+
+        btnConvert.textContent = `一括圧縮開始 (${selectedFiles.length}件)`;
+        btnConvert.disabled = false;
       }
-      selectedFileBlobUrl = URL.createObjectURL(file);
-      previewAudio.src = selectedFileBlobUrl;
-
-      // Probe duration using audio element
-      audioDuration = 0;
-      fileDuration.textContent = "解析中...";
-      
-      const tempAudio = new Audio();
-      tempAudio.src = selectedFileBlobUrl;
-
-      tempAudio.addEventListener('loadedmetadata', () => {
-        audioDuration = tempAudio.duration;
-        fileDuration.textContent = formatTime(audioDuration);
-        trimStartTime = 0;
-        trimEndTime = audioDuration;
-        updateTrimUI();
-        updateEstimate();
-      });
-
-      tempAudio.addEventListener('error', () => {
-        // Fallback estimate assuming 90 minutes if metadata fails on some mobile codecs
-        audioDuration = 90 * 60;
-        fileDuration.textContent = "約90分(推定)";
-        trimStartTime = 0;
-        trimEndTime = audioDuration;
-        updateTrimUI();
-        updateEstimate();
-      });
     }
 
-    async function startConversion() {
-      if (!selectedFile) return;
+    async function encodeSingleAudioFile(file, options, onProgress) {
+      onProgress(2, 'ファイルを読み込み中...');
 
-      pausePreview();
-      btnConvert.disabled = true;
-      progressContainer.style.display = 'block';
-      resultContainer.style.display = 'none';
-      progressBar.style.width = '0%';
-      progressSpinner.style.display = 'inline-block';
-      statusLabel.textContent = '音声データを読み込み中...';
-      percentLabel.textContent = '0%';
-
-      try {
-        if (!lameJsSource) {
-          try {
-            lameJsSource = await (await fetch('lame.min.js')).text();
-          } catch(e) {
-            console.warn('Failed to load lame.min.js:', e);
+      // 1. Read file into ArrayBuffer
+      const fileBuffer = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = (e) => {
+          if (e.lengthComputable && e.total > 0) {
+            const p = Math.min(10, Math.floor((e.loaded / e.total) * 10));
+            onProgress(p, 'ファイルを読み込み中...');
           }
-        }
-
-        // 1. Read file into ArrayBuffer with real-time smooth progress (0% -> 10%)
-        statusLabel.textContent = 'ファイル読み込み中...';
-        const fileBuffer = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onprogress = (e) => {
-            if (e.lengthComputable && e.total > 0) {
-              const p = Math.min(10, Math.floor((e.loaded / e.total) * 10));
-              progressBar.style.width = p + '%';
-              percentLabel.textContent = p + '%';
-            }
-          };
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsArrayBuffer(selectedFile);
-        });
-        progressBar.style.width = '10%';
-        percentLabel.textContent = '10%';
-
-        // 2. Decode Audio with smooth animation (10% -> 15%)
-        statusLabel.textContent = '音声波形を展開中...';
-        let decodeProgress = 10;
-        const decodeInterval = setInterval(() => {
-          if (decodeProgress < 15) {
-            decodeProgress++;
-            progressBar.style.width = decodeProgress + '%';
-            percentLabel.textContent = decodeProgress + '%';
-          }
-        }, 120);
-
-        const targetSampleRate = 16000;
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        let tempAudioCtx = null;
-        try {
-          // Request 16kHz context directly to reduce decode memory consumption by ~65%
-          tempAudioCtx = new AudioContextClass({ sampleRate: targetSampleRate });
-        } catch (e) {
-          tempAudioCtx = new AudioContextClass();
-        }
-
-        // Safe decodeAudioData compatible with Safari, Chrome, and detached buffers
-        const decodedAudio = await new Promise((resolve, reject) => {
-          const buf = fileBuffer.slice(0);
-          let resolved = false;
-
-          const onSuccess = (result) => {
-            if (!resolved) {
-              resolved = true;
-              resolve(result);
-            }
-          };
-
-          const onError = (err) => {
-            if (!resolved) {
-              resolved = true;
-              reject(err || new Error('音声データの展開に失敗しました。ファイル形式またはメモリ不足の可能性があります。'));
-            }
-          };
-
-          try {
-            const promise = tempAudioCtx.decodeAudioData(buf, onSuccess, onError);
-            if (promise && typeof promise.then === 'function') {
-              promise.then(onSuccess).catch(onError);
-            }
-          } catch (syncErr) {
-            onError(syncErr);
-          }
-        });
-
-        clearInterval(decodeInterval);
-        tempAudioCtx.close();
-
-        // 3. Optimize to 16kHz Mono (15% -> 20%)
-        statusLabel.textContent = 'AI音声(16kHzモノラル)に高速最適化中...';
-        progressBar.style.width = '16%';
-        percentLabel.textContent = '16%';
-
-        audioDuration = decodedAudio.duration;
-        let monoData = null;
-
-        if (decodedAudio.sampleRate === targetSampleRate && decodedAudio.numberOfChannels === 1) {
-          // Already 16kHz mono! Zero resampling overhead
-          monoData = decodedAudio.getChannelData(0);
-        } else if (decodedAudio.sampleRate === targetSampleRate) {
-          // Already 16kHz, mix multi-channel down to mono directly
-          const len = decodedAudio.length;
-          monoData = new Float32Array(len);
-          const numCh = decodedAudio.numberOfChannels;
-          for (let ch = 0; ch < numCh; ch++) {
-            const chData = decodedAudio.getChannelData(ch);
-            for (let i = 0; i < len; i++) {
-              monoData[i] += chData[i] / numCh;
-            }
-          }
-        } else {
-          // Native C++ Resampling via OfflineAudioContext
-          const targetLength = Math.ceil(audioDuration * targetSampleRate);
-          const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-          const offlineCtx = new OfflineContextClass(1, targetLength, targetSampleRate);
-          const source = offlineCtx.createBufferSource();
-          source.buffer = decodedAudio;
-          source.connect(offlineCtx.destination);
-          source.start(0);
-
-          const resampledAudio = await offlineCtx.startRendering();
-          monoData = resampledAudio.getChannelData(0);
-        }
-
-        // Check trimming
-        const isTrimActive = trimToggle && trimToggle.checked && (trimEndTime > trimStartTime);
-        let finalDuration = audioDuration;
-
-        if (isTrimActive) {
-          const startSec = Math.max(0, Math.min(trimStartTime, audioDuration));
-          const endSec = Math.min(audioDuration, Math.max(startSec + 0.1, trimEndTime));
-          finalDuration = endSec - startSec;
-
-          const startSample = Math.floor(startSec * targetSampleRate);
-          const endSample = Math.min(monoData.length, Math.ceil(endSec * targetSampleRate));
-          monoData = monoData.subarray(startSample, endSample);
-        }
-
-        // 4. Parallel Multi-Core MP3 Encoding via Web Workers (20% -> 100%)
-        const kbps = calculateBitrate(finalDuration, selectedMode);
-        const cores = navigator.hardwareConcurrency || 4;
-        const numWorkers = Math.max(1, Math.min(cores, 6));
-        const trimLabel = isTrimActive ? ' [区間切り出し]' : '';
-        statusLabel.textContent = `マルチコア高速MP3(${kbps}kbps, ${numWorkers}並列)${trimLabel}に圧縮中...`;
-        progressBar.style.width = '20%';
-        percentLabel.textContent = '20%';
-
-        const onFinished = (mp3Data) => {
-          progressBar.style.width = '100%';
-          percentLabel.textContent = '100%';
-          progressSpinner.style.display = 'none';
-          statusLabel.textContent = isTrimActive ? '区間切り出し完了！' : '変換完了！';
-
-          convertedBlob = new Blob(mp3Data, { type: 'audio/mp3' });
-          const origBase = selectedFile.name.replace(/\.[^/.]+$/, "");
-          convertedFileName = isTrimActive ? `${origBase}_trimmed.mp3` : `${origBase}_compressed.mp3`;
-
-          const blobUrl = URL.createObjectURL(convertedBlob);
-          downloadBtn.href = blobUrl;
-          downloadBtn.download = convertedFileName;
-          outSizeLabel.textContent = formatBytes(convertedBlob.size);
-
-          resultContainer.style.display = 'flex';
-          btnConvert.disabled = false;
-
-          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         };
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(file);
+      });
+      onProgress(10, '音声波形を展開中...');
 
-        // Multi-Worker Parallel Encoding
+      // 2. Decode Audio
+      const targetSampleRate = 16000;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      let tempAudioCtx = null;
+      try {
+        tempAudioCtx = new AudioContextClass({ sampleRate: targetSampleRate });
+      } catch (e) {
+        tempAudioCtx = new AudioContextClass();
+      }
+
+      const decodedAudio = await new Promise((resolve, reject) => {
+        const buf = fileBuffer.slice(0);
+        let resolved = false;
+        const onSuccess = (result) => {
+          if (!resolved) {
+            resolved = true;
+            resolve(result);
+          }
+        };
+        const onError = (err) => {
+          if (!resolved) {
+            resolved = true;
+            reject(err || new Error('音声データの展開に失敗しました。'));
+          }
+        };
+        try {
+          const p = tempAudioCtx.decodeAudioData(buf, onSuccess, onError);
+          if (p && typeof p.then === 'function') {
+            p.then(onSuccess).catch(onError);
+          }
+        } catch (syncErr) {
+          onError(syncErr);
+        }
+      });
+
+      try { tempAudioCtx.close(); } catch(e){}
+
+      onProgress(16, '16kHzモノラルに最適化中...');
+
+      const origDuration = decodedAudio.duration;
+      let monoData = null;
+
+      if (decodedAudio.sampleRate === targetSampleRate && decodedAudio.numberOfChannels === 1) {
+        monoData = decodedAudio.getChannelData(0);
+      } else if (decodedAudio.sampleRate === targetSampleRate) {
+        const len = decodedAudio.length;
+        monoData = new Float32Array(len);
+        const numCh = decodedAudio.numberOfChannels;
+        for (let ch = 0; ch < numCh; ch++) {
+          const chData = decodedAudio.getChannelData(ch);
+          for (let i = 0; i < len; i++) {
+            monoData[i] += chData[i] / numCh;
+          }
+        }
+      } else {
+        const targetLength = Math.ceil(origDuration * targetSampleRate);
+        const OfflineContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        const offlineCtx = new OfflineContextClass(1, targetLength, targetSampleRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = decodedAudio;
+        source.connect(offlineCtx.destination);
+        source.start(0);
+
+        const resampledAudio = await offlineCtx.startRendering();
+        monoData = resampledAudio.getChannelData(0);
+      }
+
+      // Check trimming
+      let finalDuration = origDuration;
+      if (options.trimActive && options.trimEnd > options.trimStart) {
+        const startSec = Math.max(0, Math.min(options.trimStart, origDuration));
+        const endSec = Math.min(origDuration, Math.max(startSec + 0.1, options.trimEnd));
+        finalDuration = endSec - startSec;
+
+        const startSample = Math.floor(startSec * targetSampleRate);
+        const endSample = Math.min(monoData.length, Math.ceil(endSec * targetSampleRate));
+        monoData = monoData.subarray(startSample, endSample);
+      }
+
+      // 4. Parallel MP3 Encoding
+      const kbps = calculateBitrate(finalDuration, options.selectedMode);
+      const cores = navigator.hardwareConcurrency || 4;
+      const numWorkers = Math.max(1, Math.min(cores, 6));
+
+      onProgress(20, `MP3(${kbps}kbps, ${numWorkers}並列)に圧縮中...`);
+
+      return new Promise((resolve, reject) => {
         let workerSuccess = false;
+
         if (window.Worker && lameJsSource) {
           try {
             const frameSize = 1152;
@@ -1327,8 +1442,7 @@
                   processedPerWorker[ev.data.workerIndex] = ev.data.processed;
                   const totalDone = processedPerWorker.reduce((a, b) => a + b, 0);
                   const pct = Math.floor(20 + (totalDone / totalSamples) * 78);
-                  progressBar.style.width = pct + '%';
-                  percentLabel.textContent = pct + '%';
+                  onProgress(pct, `MP3(${kbps}kbps)に圧縮中...`);
                 } else if (ev.data.type === 'complete') {
                   workerResults[ev.data.workerIndex] = ev.data.mp3Data;
                   completedWorkers++;
@@ -1337,7 +1451,6 @@
                     workers.forEach(wk => wk.terminate());
                     URL.revokeObjectURL(workerUrl);
 
-                    // Merge all chunks sequentially
                     const mergedMp3 = [];
                     for (let i = 0; i < numWorkers; i++) {
                       if (workerResults[i]) {
@@ -1346,7 +1459,7 @@
                         }
                       }
                     }
-                    onFinished(mergedMp3);
+                    finishEncoding(mergedMp3);
                   }
                 }
               };
@@ -1355,7 +1468,7 @@
                 console.warn('Worker error, fallback to main thread:', err);
                 workers.forEach(wk => wk.terminate());
                 URL.revokeObjectURL(workerUrl);
-                fallbackMainThreadEncoding();
+                fallbackMainThread();
               };
 
               worker.postMessage({
@@ -1368,16 +1481,15 @@
 
             workerSuccess = true;
           } catch (wErr) {
-            console.warn('Worker initialization failed, using fast batch mode:', wErr);
+            console.warn('Worker init failed, fallback:', wErr);
           }
         }
 
-        // Fallback: Time-sliced Batch Encoding on Main Thread (99% faster than old setTimeout)
         if (!workerSuccess) {
-          fallbackMainThreadEncoding();
+          fallbackMainThread();
         }
 
-        function fallbackMainThreadEncoding() {
+        function fallbackMainThread() {
           const mp3Encoder = new lamejs.Mp3Encoder(1, targetSampleRate, kbps);
           const mp3Data = [];
           const chunkSize = 1152 * 32;
@@ -1387,7 +1499,6 @@
 
           function encodeTimeSlice() {
             const sliceStart = performance.now();
-            // Process chunks continuously within 25ms time window (eliminates timer wait overhead!)
             while (offset < totalSamples && (performance.now() - sliceStart < 25)) {
               const end = Math.min(offset + chunkSize, totalSamples);
               const count = end - offset;
@@ -1406,20 +1517,115 @@
             }
 
             const pct = Math.floor(20 + (offset / totalSamples) * 78);
-            progressBar.style.width = pct + '%';
-            percentLabel.textContent = pct + '%';
+            onProgress(pct, `MP3(${kbps}kbps)に圧縮中...`);
 
             if (offset < totalSamples) {
               setTimeout(encodeTimeSlice, 0);
             } else {
               const finalBuf = mp3Encoder.flush();
               if (finalBuf.length > 0) mp3Data.push(finalBuf);
-              onFinished(mp3Data);
+              finishEncoding(mp3Data);
             }
           }
 
           encodeTimeSlice();
         }
+
+        function finishEncoding(mp3Data) {
+          const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+          const origBase = file.name.replace(/\.[^/.]+$/, "");
+          const outFileName = options.trimActive ? `${origBase}_trimmed.mp3` : `${origBase}_compressed.mp3`;
+          const url = URL.createObjectURL(blob);
+          resolve({
+            file: file,
+            blob: blob,
+            fileName: outFileName,
+            size: blob.size,
+            url: url
+          });
+        }
+      });
+    }
+
+    async function startConversion() {
+      if (!selectedFiles || selectedFiles.length === 0) return;
+
+      pausePreview();
+      btnConvert.disabled = true;
+      progressContainer.style.display = 'block';
+      resultContainer.style.display = 'none';
+      batchResultContainer.style.display = 'none';
+      batchResultList.innerHTML = '';
+      convertedResults = [];
+
+      progressBar.style.backgroundColor = '#3b82f6';
+      progressBar.style.width = '0%';
+      progressSpinner.style.display = 'inline-block';
+      statusLabel.textContent = '初期化中...';
+      percentLabel.textContent = '0%';
+
+      try {
+        if (!lameJsSource) {
+          try {
+            lameJsSource = await (await fetch('lame.min.js')).text();
+          } catch (e) {
+            console.warn('Failed to load lame.min.js:', e);
+          }
+        }
+
+        const totalFiles = selectedFiles.length;
+        const isSingle = (totalFiles === 1);
+
+        const options = {
+          selectedMode: selectedMode,
+          isMono: monoToggle.checked,
+          trimActive: isSingle && trimToggle && trimToggle.checked && (trimEndTime > trimStartTime),
+          trimStart: trimStartTime,
+          trimEnd: trimEndTime
+        };
+
+        for (let i = 0; i < totalFiles; i++) {
+          const file = selectedFiles[i];
+          const fileIndex = i;
+
+          const res = await encodeSingleAudioFile(file, options, (filePct, label) => {
+            const overallPct = Math.floor((fileIndex / totalFiles) * 100 + (filePct / totalFiles));
+            progressBar.style.width = overallPct + '%';
+            percentLabel.textContent = overallPct + '%';
+            if (totalFiles > 1) {
+              statusLabel.textContent = `[${fileIndex + 1}/${totalFiles}] ${label}`;
+            } else {
+              statusLabel.textContent = label;
+            }
+          });
+
+          convertedResults.push(res);
+
+          if (!isSingle) {
+            addBatchResultItem(res, fileIndex);
+            batchResultContainer.style.display = 'block';
+            batchTotalSavedLabel.textContent = `${convertedResults.length}件`;
+          }
+        }
+
+        // All done
+        progressBar.style.width = '100%';
+        percentLabel.textContent = '100%';
+        progressSpinner.style.display = 'none';
+        statusLabel.textContent = isSingle ? (options.trimActive ? '区間切り出し完了！' : '変換完了！') : `全${totalFiles}件の圧縮が完了しました`;
+        btnConvert.disabled = false;
+
+        if (isSingle) {
+          const singleRes = convertedResults[0];
+          downloadBtn.href = singleRes.url;
+          downloadBtn.download = singleRes.fileName;
+          outSizeLabel.textContent = formatBytes(singleRes.size);
+          resultContainer.style.display = 'flex';
+          convertedBlob = singleRes.blob;
+          convertedFileName = singleRes.fileName;
+        }
+
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
       } catch (err) {
         console.error(err);
@@ -1431,24 +1637,61 @@
       }
     }
 
-    async function shareAudio() {
-      if (!convertedBlob) return;
-      if (navigator.canShare && navigator.canShare({ files: [new File([convertedBlob], convertedFileName, { type: 'audio/mp3' })] })) {
+    function addBatchResultItem(res, index) {
+      const item = document.createElement('div');
+      item.className = 'batch-result-item';
+      item.innerHTML = `
+        <div class="batch-res-info">
+          <span class="batch-res-name" title="${escapeHtml(res.fileName)}">${escapeHtml(res.fileName)}</span>
+          <span class="batch-res-size">${formatBytes(res.size)}</span>
+        </div>
+        <div class="batch-res-actions">
+          <a class="btn-res-action" href="${res.url}" download="${escapeHtml(res.fileName)}">📥 保存</a>
+          <button type="button" class="btn-res-action" onclick="shareBatchItem(${index})">📤 共有</button>
+        </div>
+      `;
+      batchResultList.appendChild(item);
+    }
+
+    function downloadAllBatch() {
+      if (!convertedResults || convertedResults.length === 0) return;
+      convertedResults.forEach((item, idx) => {
+        setTimeout(() => {
+          const a = document.createElement('a');
+          a.href = item.url;
+          a.download = item.fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }, idx * 250);
+      });
+    }
+
+    async function shareBatchItem(index) {
+      const item = convertedResults[index];
+      if (!item) return;
+
+      if (navigator.canShare && navigator.canShare({ files: [new File([item.blob], item.fileName, { type: 'audio/mp3' })] })) {
         try {
-          const fileToShare = new File([convertedBlob], convertedFileName, { type: 'audio/mp3' });
+          const fileToShare = new File([item.blob], item.fileName, { type: 'audio/mp3' });
           await navigator.share({
-            title: convertedFileName,
-            text: 'AI向けに100MB未満に圧縮した講義音声',
+            title: item.fileName,
+            text: 'AI向けに100MB未満に圧縮した音声',
             files: [fileToShare]
           });
         } catch (err) {
           if (err.name !== 'AbortError') {
-            alert('共有できませんでした。ダウンロードボタンをご利用ください。');
+            alert('共有できませんでした。保存ボタンをご利用ください。');
           }
         }
       } else {
-        alert('お使いのブラウザは直接共有に対応していません。上の「MP3を保存」ボタンからダウンロードしてください。');
+        alert('お使いの環境は直接共有に対応していません。「保存」ボタンからダウンロードしてください。');
       }
+    }
+
+    async function shareAudio() {
+      if (convertedResults.length === 0) return;
+      shareBatchItem(0);
     }
 
     // Register Service Worker for PWA installation (with auto-update check)
