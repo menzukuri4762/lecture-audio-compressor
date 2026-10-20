@@ -190,8 +190,8 @@
 
     .pill-group {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
       margin-bottom: 12px;
     }
 
@@ -200,8 +200,8 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 10px;
       color: var(--text-sub);
-      padding: 10px 6px;
-      font-size: 12px;
+      padding: 10px 4px;
+      font-size: 11px;
       font-weight: 600;
       text-align: center;
       cursor: pointer;
@@ -212,6 +212,30 @@
       background: rgba(59, 130, 246, 0.2);
       border-color: var(--primary);
       color: #93c5fd;
+    }
+
+    .btn-preset {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: var(--text-sub);
+      padding: 5px 6px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .btn-preset:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+    }
+
+    .btn-preset:active {
+      transform: scale(0.97);
     }
 
     .pill-sub {
@@ -766,6 +790,25 @@
         <div class="pill-btn" data-mode="compact" onclick="selectMode('compact')">
           軽量
         </div>
+        <div class="pill-btn" data-mode="custom" onclick="selectMode('custom')">
+          カスタム
+        </div>
+      </div>
+
+      <!-- Custom Target Size Panel (Visible only when 'custom' mode selected) -->
+      <div id="customTargetBox" style="display:none; margin-bottom: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">目標サイズ (上限)</span>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <input type="number" id="customTargetInput" min="5" max="500" value="50" oninput="updateEstimate()" style="width: 55px; background: #0f172a; border: 1px solid rgba(59,130,246,0.5); border-radius: 6px; color: #ffffff; text-align: center; font-weight: 700; font-size: 13px; padding: 4px 0;">
+            <span style="font-size: 12px; font-weight: 600; color: #93c5fd;">MB</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="btn-preset" onclick="setCustomTarget(25)">25MB</button>
+          <button type="button" class="btn-preset" onclick="setCustomTarget(50)">50MB</button>
+          <button type="button" class="btn-preset" onclick="setCustomTarget(100)">100MB</button>
+        </div>
       </div>
 
       <div class="toggle-row">
@@ -1148,8 +1191,30 @@
       return (bytes / 1024).toFixed(0) + " KB";
     }
 
-    function calculateBitrate(dur, mode) {
+    function getCustomTargetMb() {
+      const input = document.getElementById('customTargetInput');
+      const val = parseFloat(input ? input.value : 50);
+      return (!isNaN(val) && val > 0) ? val : 50;
+    }
+
+    function setCustomTarget(mb) {
+      const input = document.getElementById('customTargetInput');
+      if (input) {
+        input.value = mb;
+        updateEstimate();
+      }
+    }
+
+    function calculateBitrate(dur, mode, customTargetMb = 50) {
       if (!dur || dur <= 0) return 64;
+
+      if (mode === 'custom') {
+        const targetMb = Math.max(5, Math.min(customTargetMb, 500));
+        const maxSafeBytes = targetMb * 1024 * 1024 * 0.94;
+        const targetKbps = Math.floor((maxSafeBytes * 8) / (dur * 1000));
+        return Math.min(320, Math.max(16, targetKbps));
+      }
+
       // Target max bytes = 95MB to strictly guarantee < 100MB
       const maxSafeBytes = 95 * 1024 * 1024 * 0.94;
       const maxAllowedKbps = Math.floor((maxSafeBytes * 8) / (dur * 1000));
@@ -1174,7 +1239,8 @@
     function updateEstimate() {
       if (!selectedFile) return;
       const effDur = getEffectiveDuration();
-      const kbps = calculateBitrate(effDur, selectedMode);
+      const customMb = getCustomTargetMb();
+      const kbps = calculateBitrate(effDur, selectedMode, customMb);
       const estBytes = (kbps * 1000 / 8) * effDur;
       const trimNotice = (trimToggle && trimToggle.checked && trimEndTime > trimStartTime) ? ' (区間抽出)' : '';
       fileEst.textContent = `約 ${(estBytes / (1024 * 1024)).toFixed(1)} MB (${kbps}kbps)${trimNotice}`;
@@ -1185,6 +1251,10 @@
       document.querySelectorAll('.pill-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.mode === mode);
       });
+      const customBox = document.getElementById('customTargetBox');
+      if (customBox) {
+        customBox.style.display = (mode === 'custom') ? 'block' : 'none';
+      }
       updateEstimate();
     }
 
@@ -1361,7 +1431,7 @@
       }
 
       // 4. Parallel MP3 Encoding
-      const kbps = calculateBitrate(finalDuration, options.selectedMode);
+      const kbps = calculateBitrate(finalDuration, options.selectedMode, options.customTargetMb);
       const cores = navigator.hardwareConcurrency || 4;
       const numWorkers = Math.max(1, Math.min(cores, 6));
 
@@ -1578,6 +1648,7 @@
 
         const options = {
           selectedMode: selectedMode,
+          customTargetMb: getCustomTargetMb(),
           isMono: monoToggle.checked,
           trimActive: isSingle && trimToggle && trimToggle.checked && (trimEndTime > trimStartTime),
           trimStart: trimStartTime,
